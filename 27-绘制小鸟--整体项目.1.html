@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>title</title>
+  <style>
+    canvas {
+      border: 1px solid yellow;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas width='800' height='600'></canvas>
+</body>
+<script src="./bird.js"></script>
+<script src="./sky.js"></script>
+<script src="./land.js"></script>
+<script src="./pipe.js"></script>
+<script>
+  // 加载图片函数
+  function onloadImg(arr, callback) {
+    var imgList = [];
+    var count = 0;
+    for (var i = 0; i < arr.length; i++) {
+      var img = new Image();
+      img.src = './images/' + arr[i] + '.png';
+      imgList[arr[i]] = img;
+      img.onload = function () {
+        count++;
+        // console.log(img);
+        if (count >= arr.length) {
+          callback(imgList);
+        }
+      }
+    }
+  }
+
+  var canvas = document.querySelector('canvas');
+  var ctx = canvas.getContext('2d');
+
+  var arr = ['birds', 'sky', 'land','pipe2','pipe1'];
+  onloadImg(arr, function (imgList) {
+    // 获取各个图片的对象
+    var birdimg = imgList['birds'];
+    var skyImg = imgList['sky'];
+    var landImg = imgList['land'];
+    var pipeTop=imgList['pipe2'];
+    var pipeBottom=imgList['pipe1'];
+    // -------小鸟部分---------
+    // 初始时间
+    var startTime = new Date();
+    var time = new Date();
+    // 创建小鸟对象
+    var bird = new Bird({
+      ctx: ctx,
+      birdimg: birdimg,
+      canvasX: 100,
+      canvasY: 100
+    })
+    // -----------天空部分--------------
+    var sky = new Sky({
+      ctx: ctx,
+      skyImg: skyImg,
+      skyX: 0
+    })
+    var sky1 = new Sky({
+      ctx: ctx,
+      skyImg: skyImg,
+      skyX: skyImg.width
+    })
+    // -------------绘制地面--------------
+    // 需要四个图片才可以画完整
+    {
+      var landArr = [];
+      for (var i = 0; i < 4; i++) {
+        var land = new Land({
+          ctx: ctx,
+          landImg: landImg,
+          canvasH: canvas.height,
+          landX: i * landImg.width
+        })
+        landArr.push(land);
+      }
+    }
+    // ------------管道部分-----------------
+    var pipeArr=[];
+    for(var i=0;i<6;i++){
+      var pipe=new Pipe({
+        ctx:ctx,
+        pipeImgTop:pipeTop,
+        pipeImgBottom:pipeBottom,
+        pipeX:300+i*pipeTop.width*3
+      })
+      pipeArr.push(pipe);
+    }
+    function move() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // 在判断路径的时候会把存在的路径全部遍历一次，需要开启新路径，不让上一次的路径影响本次的isPointInPath的判断
+      ctx.beginPath();
+      // // ---------绘制天空部分-----------------
+      sky.drawSky();
+      sky1.drawSky();
+      // ------------管道的绘制--------------
+      for(var i=0;i<pipeArr.length;i++){
+        pipeArr[i].drawPipe();
+      }
+      // --------绘制地面部分-----------
+      for (var i = 0; i < landArr.length; i++) {
+        landArr[i].drawLand();
+      }
+      // ----------小鸟部分-------------------
+      {
+        // 鸟每一次移动的距离
+        var endTime = new Date();
+        // 计算时间差
+        var offsetTime = endTime - startTime;
+        // 计算时间 以毫秒为单位
+
+        var goTime=endTime-time;
+        console.log(goTime);
+        var hour=Math.floor(goTime/1000/3600);
+        var min=Math.floor(goTime/1000%3600/60);
+        var s=Math.floor(goTime/1000%60);
+        var ms=Math.floor(goTime%1000);
+        var test="你坚持了"+hour+"小时"+min+"分"+s+"秒"+ms+"毫秒";
+        // 下一次的开始时间是上一次的结束时间
+        startTime = endTime;
+        // 调用小鸟对象
+        ctx.font="20px 微软雅黑";
+        ctx.fillStyle="orange";
+        bird.drawBird(offsetTime);
+        ctx.fillText(test,500,30);
+      }
+      // -------------控制小鸟上下的限制-----------------------
+      if(bird.canvasY<0||bird.canvasY>=canvas.height-bird.birdH-land.landH){
+        return;
+      }
+      // ---------------碰到管道停止---------------------
+      // 使用isPointInPath
+      if(ctx.isPointInPath(bird.canvasX+bird.birdW/2,bird.canvasY+bird.birdH/2)){
+        return;
+      }
+      window.requestAnimationFrame(move);
+    }
+    move();
+    // 小鸟向上飞
+    canvas.onclick = function () {
+      // birdSteep 改变速度的方向即可，因为速度的变量时全局的
+      bird.birdSteep = -0.25;
+    }
+  })
+
+</script>
+
+</html>
